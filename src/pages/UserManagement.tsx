@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -58,7 +57,7 @@ const UserManagement = () => {
   const { user: currentUser } = useAuth();
 
   // Check if current user is admin
-  const isAdmin = currentUser?.user_metadata?.role === "admin" || currentUser?.user_metadata?.role === "owner";
+  const isAdmin = currentUser?.user_metadata?.role === "admin";
 
   useEffect(() => {
     fetchUsers();
@@ -222,17 +221,10 @@ const UserManagement = () => {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "owner":
+      case "admin":
         return (
           <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1">
             <ShieldAlert className="h-3 w-3" />
-            Owner
-          </Badge>
-        );
-      case "admin":
-        return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
-            <ShieldCheck className="h-3 w-3" />
             Admin
           </Badge>
         );

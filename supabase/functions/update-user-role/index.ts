@@ -66,8 +66,8 @@ serve(async (req) => {
       
       const requestingUserRole = requestingUser.user_metadata?.role || 'user';
       
-      // Only admins and owners can delete users
-      if (requestingUserRole !== 'admin' && requestingUserRole !== 'owner') {
+      // Only admins can delete users
+      if (requestingUserRole !== 'admin') {
         return new Response(
           JSON.stringify({ error: 'Admin privileges required to delete users' }),
           {
@@ -90,10 +90,10 @@ serve(async (req) => {
         )
       }
       
-      // Cannot delete the owner account
+      // Cannot delete the admin account
       if (userData.user.email === 'jrdeguzman3647@gmail.com') {
         return new Response(
-          JSON.stringify({ error: 'The owner account cannot be deleted' }),
+          JSON.stringify({ error: 'The admin account cannot be deleted' }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 403,
@@ -127,10 +127,10 @@ serve(async (req) => {
       )
     }
 
-    // Validate role - include 'owner' in allowed roles
-    if (!['owner', 'admin', 'user', 'blocked'].includes(role)) {
+    // Validate role
+    if (!['admin', 'user', 'blocked'].includes(role)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid role. Must be owner, admin, user, or blocked' }),
+        JSON.stringify({ error: 'Invalid role. Must be admin, user, or blocked' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
@@ -153,21 +153,10 @@ serve(async (req) => {
     
     const requestingUserRole = requestingUser.user_metadata?.role || 'user';
     
-    // Owner role special rules
-    if (email === "jrdeguzman3647@gmail.com" && role !== 'owner') {
+    // Admin role special rules
+    if (email === "jrdeguzman3647@gmail.com" && role !== 'admin') {
       return new Response(
-        JSON.stringify({ error: 'The designated owner role cannot be changed' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 403,
-        }
-      )
-    }
-    
-    // Owner role can only be set for jrdeguzman3647@gmail.com
-    if (role === 'owner' && email !== "jrdeguzman3647@gmail.com") {
-      return new Response(
-        JSON.stringify({ error: 'Owner role can only be assigned to the designated owner email' }),
+        JSON.stringify({ error: 'The designated admin role cannot be changed' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,
@@ -175,10 +164,10 @@ serve(async (req) => {
       )
     }
 
-    // Only admins and owners can change user roles
-    if (requestingUserRole !== 'admin' && requestingUserRole !== 'owner') {
+    // Only admins can change user roles
+    if (requestingUserRole !== 'admin') {
       return new Response(
-        JSON.stringify({ error: 'Only admins and owners can modify user roles' }),
+        JSON.stringify({ error: 'Only admins can modify user roles' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,

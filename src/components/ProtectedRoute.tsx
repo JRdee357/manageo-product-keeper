@@ -14,25 +14,25 @@ const ProtectedRoute = () => {
   // Check if this is a password reset route which doesn't need authentication
   const isPasswordResetRoute = location.pathname === "/reset-password";
 
-  // Check if user is the designated owner
+  // Check if user is the designated admin
   useEffect(() => {
-    if (user && user.email === "jrdeguzman3647@gmail.com" && user.user_metadata?.role !== "owner") {
-      // Update owner role in localStorage if needed
+    if (user && user.email === "jrdeguzman3647@gmail.com" && user.user_metadata?.role !== "admin") {
+      // Update admin role in localStorage if needed
       try {
         const session = JSON.parse(localStorage.getItem('sb-avocdhvgtmkguyboohkc-auth-token') || '{}');
         if (session.user) {
           session.user.user_metadata = {
             ...session.user.user_metadata,
-            role: "owner" // Ensure designated email has owner role
+            role: "admin" // Ensure designated email has admin role
           };
           localStorage.setItem('sb-avocdhvgtmkguyboohkc-auth-token', JSON.stringify(session));
-          console.log("Updated owner role in localStorage");
+          console.log("Updated admin role in localStorage");
           
           // Force page reload to update the user object with new role
           window.location.reload();
         }
       } catch (error) {
-        console.error("Error ensuring owner role:", error);
+        console.error("Error ensuring admin role:", error);
       }
     }
   }, [user]);
