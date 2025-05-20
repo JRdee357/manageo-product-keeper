@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +31,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, Search, UserPlus, Trash, Edit, Shield, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+import {
+  MoreHorizontal, Search, UserPlus, Trash, Edit, Shield, ShieldAlert, ShieldCheck, ShieldX
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { formatDate } from "@/lib/utils";
 
@@ -55,7 +58,7 @@ const UserManagement = () => {
   const { user: currentUser } = useAuth();
 
   // Check if current user is admin
-  const isAdmin = currentUser?.user_metadata?.role === "admin";
+  const isAdmin = currentUser?.user_metadata?.role === "admin" || currentUser?.user_metadata?.role === "owner";
 
   useEffect(() => {
     fetchUsers();
@@ -78,30 +81,30 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.admin.listUsers();
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) {
-        throw error;
+      if (!session) {
+        throw new Error("No active session");
       }
-
-      if (data && data.users) {
-        // Map the users to our simplified User type
-        setFilteredUsers(data.users.map(user => ({
-          role: user.user_metadata?.role || "user",
-          id: user.id,
-          email: user.email || "",
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-        })) as User[]);
-        
-        setUsers(data.users.map(user => ({
-          role: user.user_metadata?.role || "user",
-          id: user.id,
-          email: user.email || "",
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-        })) as User[]);
+      
+      // Call the edge function with the auth token
+      const response = await fetch('https://avocdhvgtmkguyboohkc.functions.supabase.co/list-users', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch users');
       }
+      
+      const userData = await response.json();
+      setUsers(userData);
+      setFilteredUsers(userData);
     } catch (error: any) {
       console.error("Error fetching users:", error);
       toast({
@@ -118,9 +121,29 @@ const UserManagement = () => {
     if (!userToDelete) return;
     
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userToDelete);
+      // Call the update-user-role function to handle user deletion
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) throw error;
+      if (!session) {
+        throw new Error("No active session");
+      }
+      
+      const response = await fetch('https://avocdhvgtmkguyboohkc.functions.supabase.co/update-user-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ 
+          userId: userToDelete,
+          action: 'delete'
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
       
       // Remove user from state
       setUsers(users.filter(user => user.id !== userToDelete));
@@ -150,11 +173,30 @@ const UserManagement = () => {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      const { error } = await supabase.auth.admin.updateUserById(userId, {
-        user_metadata: { role: newRole }
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("No active session");
+      }
+      
+      // Call the update-user-role function
+      const response = await fetch('https://avocdhvgtmkguyboohkc.functions.supabase.co/update-user-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          email: users.find(u => u.id === userId)?.email,
+          role: newRole,
+          requestingUserEmail: currentUser?.email
+        })
       });
       
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update user role');
+      }
       
       // Update user in state
       const updatedUsers = users.map(user => 
@@ -180,6 +222,13 @@ const UserManagement = () => {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
+      case "owner":
+        return (
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" />
+            Owner
+          </Badge>
+        );
       case "admin":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">

@@ -47,7 +47,75 @@ serve(async (req) => {
     )
 
     // Get the request body
-    const { email, role, requestingUserEmail } = await req.json()
+    const reqData = await req.json();
+    
+    // Check if this is a delete action
+    if (reqData.action === 'delete' && reqData.userId) {
+      // Get the authenticated user's JWT claims to check their role
+      const { data: { user: requestingUser } } = await supabaseClient.auth.getUser();
+      
+      if (!requestingUser) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 401,
+          }
+        )
+      }
+      
+      const requestingUserRole = requestingUser.user_metadata?.role || 'user';
+      
+      // Only admins and owners can delete users
+      if (requestingUserRole !== 'admin' && requestingUserRole !== 'owner') {
+        return new Response(
+          JSON.stringify({ error: 'Admin privileges required to delete users' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 403,
+          }
+        )
+      }
+      
+      // Get user info before deletion
+      const { data: userData, error: userError } = await adminAuthClient.auth.admin.getUserById(reqData.userId);
+      
+      if (userError) {
+        return new Response(
+          JSON.stringify({ error: 'User not found' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404,
+          }
+        )
+      }
+      
+      // Cannot delete the owner account
+      if (userData.user.email === 'jrdeguzman3647@gmail.com') {
+        return new Response(
+          JSON.stringify({ error: 'The owner account cannot be deleted' }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 403,
+          }
+        )
+      }
+      
+      // Delete the user
+      const { error: deleteError } = await adminAuthClient.auth.admin.deleteUser(reqData.userId);
+      
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      return new Response(
+        JSON.stringify({ message: 'User deleted successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Normal role update flow
+    const { email, role, requestingUserEmail } = reqData;
 
     if (!email || !role) {
       return new Response(
@@ -59,10 +127,10 @@ serve(async (req) => {
       )
     }
 
-    // Validate role - removed 'owner' from allowed roles
-    if (!['admin', 'user', 'blocked'].includes(role)) {
+    // Validate role - include 'owner' in allowed roles
+    if (!['owner', 'admin', 'user', 'blocked'].includes(role)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid role. Must be admin, user, or blocked' }),
+        JSON.stringify({ error: 'Invalid role. Must be owner, admin, user, or blocked' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
@@ -85,10 +153,10 @@ serve(async (req) => {
     
     const requestingUserRole = requestingUser.user_metadata?.role || 'user';
     
-    // Admin role special rules - admin is now the highest role
-    if (email === "jrdeguzman3647@gmail.com" && role !== 'admin') {
+    // Owner role special rules
+    if (email === "jrdeguzman3647@gmail.com" && role !== 'owner') {
       return new Response(
-        JSON.stringify({ error: 'The designated admin role cannot be changed' }),
+        JSON.stringify({ error: 'The designated owner role cannot be changed' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,
@@ -96,10 +164,10 @@ serve(async (req) => {
       )
     }
     
-    // Admin role can only be set for jrdeguzman3647@gmail.com
-    if (role === 'admin' && email !== "jrdeguzman3647@gmail.com") {
+    // Owner role can only be set for jrdeguzman3647@gmail.com
+    if (role === 'owner' && email !== "jrdeguzman3647@gmail.com") {
       return new Response(
-        JSON.stringify({ error: 'Admin role can only be assigned to the designated admin email' }),
+        JSON.stringify({ error: 'Owner role can only be assigned to the designated owner email' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,
@@ -107,10 +175,10 @@ serve(async (req) => {
       )
     }
 
-    // Only admins can change user roles
-    if (requestingUserRole !== 'admin') {
+    // Only admins and owners can change user roles
+    if (requestingUserRole !== 'admin' && requestingUserRole !== 'owner') {
       return new Response(
-        JSON.stringify({ error: 'Only admins can modify user roles' }),
+        JSON.stringify({ error: 'Only admins and owners can modify user roles' }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 403,

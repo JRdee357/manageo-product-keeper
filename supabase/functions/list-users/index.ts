@@ -46,6 +46,17 @@ serve(async (req) => {
     // Get the user's current role
     const userRole = authenticatedUser.user_metadata?.role || 'user';
     console.log("User role:", userRole);
+    
+    // Only allow admin users to list all users
+    if (userRole !== 'admin' && userRole !== 'owner') {
+      return new Response(
+        JSON.stringify({ error: 'Admin privileges required to view user list' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        }
+      )
+    }
 
     // Create admin auth client for accessing user data
     const adminAuthClient = createClient(

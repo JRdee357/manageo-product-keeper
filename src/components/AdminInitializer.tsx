@@ -13,19 +13,19 @@ const AdminInitializer = () => {
       if (!user || initialized) return;
       
       try {
-        // Check if the designated admin email matches
-        const isAdminEmail = user.email === "jrdeguzman3647@gmail.com";
+        // Check if the designated owner email matches
+        const isOwnerEmail = user.email === "jrdeguzman3647@gmail.com";
         
         // If user already has the correct role, skip initialization
-        if ((isAdminEmail && user.user_metadata?.role === 'admin') || 
-            (!isAdminEmail && user.user_metadata?.role)) {
+        if ((isOwnerEmail && user.user_metadata?.role === 'owner') || 
+            (!isOwnerEmail && user.user_metadata?.role)) {
           console.log("User already has correct role, skipping initialization");
           setInitialized(true);
           return;
         }
         
         // Determine the role based on email
-        const initialRole = isAdminEmail ? 'admin' : (user.user_metadata?.role || 'user');
+        const initialRole = isOwnerEmail ? 'owner' : (user.user_metadata?.role || 'user');
         
         console.log(`Initializing user role to: ${initialRole}`);
         
@@ -44,8 +44,8 @@ const AdminInitializer = () => {
           });
         }
         
-        // Try to update the role on the server if it's the admin
-        if (isAdminEmail) {
+        // Try to update the role on the server if it's the owner
+        if (isOwnerEmail) {
           try {
             await fetch(`https://avocdhvgtmkguyboohkc.functions.supabase.co/update-user-role`, {
               method: 'POST',
@@ -55,13 +55,13 @@ const AdminInitializer = () => {
               },
               body: JSON.stringify({
                 email: user.email,
-                role: 'admin',
+                role: 'owner',
                 requestingUserEmail: user.email
               })
             });
-            console.log("Admin role updated on server");
+            console.log("Owner role updated on server");
           } catch (error) {
-            console.error("Failed to update admin role on server:", error);
+            console.error("Failed to update owner role on server:", error);
             // Continue anyway since we updated locally
           }
         }
