@@ -72,8 +72,25 @@ export function previewCustomerSalesPdf(customerData: CustomerData, salesData: T
     // Add page numbers and footer to all pages
     addPageFooters(doc);
     
-    // Open PDF in new tab
-    window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+    // Create a blob from PDF output and open in new tab instead of directly using URL.createObjectURL
+    // This approach has better browser compatibility
+    const pdfBlob = new Blob([doc.output('blob')], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    
+    // Open PDF in new tab with error handling
+    const newWindow = window.open(blobUrl, '_blank');
+    
+    // Check if the window was successfully opened
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      console.error("Failed to open PDF in new tab - popup might be blocked");
+      // Fallback to direct download if opening in a new tab fails
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = `sales_report_preview.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
     
     return true;
   } catch (error) {
